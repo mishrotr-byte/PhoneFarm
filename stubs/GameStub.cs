@@ -18,9 +18,9 @@ namespace StardewValley
         public static int dayOfMonth;
         public static int year = 1;
         public static Farmer player;
-        public static StardewValley.Menus.IClickableMenu activeClickableMenu;
+        public static Menus.IClickableMenu activeClickableMenu;
 
-        public static NPC getCharacterFromName(string n) => null;
+        public static NPC getCharacterFromName(string name) => null;
         public static Farm getFarm() => null;
     }
 
@@ -32,7 +32,7 @@ namespace StardewValley
     public class Object : Item
     {
         public Object() { }
-        public Object(Vector2 v, string id, int stack = 1) { }
+        public Object(Vector2 tileLocation, string itemId, int stack) { }
     }
 
     public class Farmer
@@ -53,8 +53,8 @@ namespace StardewValley
         public int[] experiencePoints = new int[5];
         public IList<Item> Items { get; set; } = new List<Item>();
 
-        public void addItemByMenuIfNecessary(Item i) { }
-        public int getFriendshipHeartLevelForNPC(string n) => 0;
+        public void addItemByMenuIfNecessary(Item item) { }
+        public int getFriendshipHeartLevelForNPC(string name) => 0;
     }
 
     public class Character
@@ -75,20 +75,18 @@ namespace StardewValley
     public class GameLocation
     {
         public string Name;
-        public delegate void afterQuestionBehavior(Farmer who, string key);
+        public delegate void afterQuestionBehavior(Farmer who, string answerKey);
 
         public void createQuestionDialogue(
             string question,
-            Response[] answers,
-            afterQuestionBehavior callback) { }
+            Response[] answerChoices,
+            afterQuestionBehavior afterDialogueBehavior) { }
     }
 
     public class Farm : GameLocation
     {
-        public IDictionary<Vector2, Object> Objects =
-            new Dictionary<Vector2, Object>();
-        public IDictionary<Vector2, TerrainFeature> terrainFeatures =
-            new Dictionary<Vector2, TerrainFeature>();
+        public IDictionary<Vector2, Object> Objects = new Dictionary<Vector2, Object>();
+        public IDictionary<Vector2, TerrainFeature> terrainFeatures = new Dictionary<Vector2, TerrainFeature>();
         public IList<Building> buildings = new List<Building>();
 
         public List<FarmAnimal> getAllFarmAnimals() => new();
@@ -100,7 +98,7 @@ namespace StardewValley
 
     public class Response
     {
-        public Response(string key, string text) { }
+        public Response(string responseKey, string responseText) { }
     }
 
     public static class Utility
@@ -110,8 +108,8 @@ namespace StardewValley
 
     public static class ItemRegistry
     {
-        public static Item Create(string id, int amount = 1) => new Object();
-        public static ItemMetadata GetData(string id) => null;
+        public static Item Create(string itemId, int amount = 1) => new Object();
+        public static ItemMetadata GetData(string itemId) => null;
     }
 
     public class ItemMetadata
