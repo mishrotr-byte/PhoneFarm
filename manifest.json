@@ -1,0 +1,10 @@
+{
+  "Name": "PhoneFarm",
+  "Author": "YourName",
+  "Version": "1.0.0",
+  "Description": "Adds a smartphone with AI assistant, resource spawning, skill upgrades, bank, shop, challenges and more.",
+  "UniqueID": "YourName.PhoneFarm",
+  "EntryDll": "PhoneFarm.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": []
+}
