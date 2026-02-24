@@ -2,12 +2,26 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <EnableHarmony>true</EnableHarmony>
     <LangVersion>latest</LangVersion>
+    <AssemblyName>PhoneFarm</AssemblyName>
+    <RootNamespace>PhoneFarm</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <NoWarn>CS0436</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
+    <Reference Include="Stardew Valley">
+      <HintPath>$(StubPath)/Stardew Valley.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="StardewModdingAPI">
+      <HintPath>$(StubPath)/StardewModdingAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MonoGame.Framework">
+      <HintPath>$(StubPath)/MonoGame.Framework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>
