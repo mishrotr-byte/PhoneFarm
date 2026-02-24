@@ -11,6 +11,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      LIB_PATH: ${{ github.workspace }}/lib
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -21,20 +24,39 @@ jobs:
         dotnet-version: '6.0.x'
 
     - name: Build Game Stubs
-      run: dotnet build stubs/GameStub.csproj -c Release -o ${{ github.workspace }}/lib
+      run: |
+        dotnet build stubs/GameStub.csproj -c Release -o $LIB_PATH
+        echo "=== Stub output ==="
+        ls -la $LIB_PATH/
 
-    - name: Download SMAPI
+    - name: Download SMAPI DLL
       run: |
         wget -q "https://github.com/Pathoschild/SMAPI/releases/download/4.1.8/SMAPI-4.1.8-installer.zip" -O /tmp/smapi.zip
         unzip -q /tmp/smapi.zip -d /tmp/smapi
-        find /tmp/smapi -name "StardewModdingAPI.dll" -type f | head -1 | xargs -I{} cp {} ${{ github.workspace }}/lib/
-        ls -la ${{ github.workspace }}/lib/
+        find /tmp/smapi -name "StardewModdingAPI.dll" -type f | head -1 | xargs -I{} cp {} $LIB_PATH/
+        echo "=== All libs ==="
+        ls -la $LIB_PATH/
 
-    - name: Build Mod
-      run: dotnet build src/PhoneFarm.csproj -c Release -p:StubPath=${{ github.workspace }}/lib
+    - name: Build PhoneFarm
+      run: |
+        dotnet build src/PhoneFarm.csproj \
+          -c Release \
+          -p:StubPath=$LIB_PATH \
+          -p:EnableModDeploy=false \
+          -p:EnableGameDebugging=false
 
     - name: Package
       run: |
         mkdir -p release/PhoneFarm
         find src/bin -name "PhoneFarm.dll" | head -1 | xargs -I{} cp {} release/PhoneFarm/
-        cp src/manifest.json 
+        cp src/manifest.json release/PhoneFarm/
+        cp src/config.json release/PhoneFarm/
+        echo "=== Release contents ==="
+        ls -la release/PhoneFarm/
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PhoneFarm-Mod
+        path: release/PhoneFarm/
+        retention-days: 90
