@@ -1,5 +1,7 @@
 bin/
 obj/
+lib/
+release/
 *.user
 *.suo
 .vs/
