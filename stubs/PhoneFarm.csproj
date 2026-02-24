@@ -6,10 +6,11 @@
     <AssemblyName>PhoneFarm</AssemblyName>
     <RootNamespace>PhoneFarm</RootNamespace>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <NoWarn>CS0436</NoWarn>
   </PropertyGroup>
 
-  <!-- CI build: use stubs -->
-  <ItemGroup Condition="'$(CI)' == 'true'">
+  <!-- CI: use stub DLLs -->
+  <ItemGroup Condition="'$(StubPath)' != ''">
     <Reference Include="Stardew Valley">
       <HintPath>$(StubPath)/Stardew Valley.dll</HintPath>
       <Private>false</Private>
@@ -24,8 +25,8 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Local build: use ModBuildConfig -->
-  <ItemGroup Condition="'$(CI)' != 'true'">
+  <!-- Local dev: use ModBuildConfig -->
+  <ItemGroup Condition="'$(StubPath)' == ''">
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
   </ItemGroup>
 
