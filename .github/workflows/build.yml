@@ -1,0 +1,41 @@
+name: Build PhoneFarm
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore PhoneFarm/PhoneFarm.csproj
+
+    - name: Build
+      run: dotnet build PhoneFarm/PhoneFarm.csproj --configuration Release --no-restore
+
+    - name: Prepare Release Files
+      run: |
+        mkdir -p release/PhoneFarm
+        cp PhoneFarm/bin/Release/net6.0/PhoneFarm.dll release/PhoneFarm/
+        cp PhoneFarm/manifest.json release/PhoneFarm/
+        cp PhoneFarm/config.json release/PhoneFarm/
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PhoneFarm-Mod
+        path: release/PhoneFarm/
+        retention-days: 90
