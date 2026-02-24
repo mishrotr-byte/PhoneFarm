@@ -7,6 +7,10 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+env:
+  SMAPI_VERSION: "4.1.8"
+  GAME_PATH: "${{ github.workspace }}/game-stub"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,20 +24,211 @@ jobs:
       with:
         dotnet-version: '6.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore PhoneFarm/PhoneFarm.csproj
+    # Download SMAPI and extract game stubs
+    - name: Setup SMAPI + Game Stubs
+      run: |
+        mkdir -p "$GAME_PATH/smapi-internal"
+        
+        # Download SMAPI
+        wget -q "https://github.com/Pathoschild/SMAPI/releases/download/${SMAPI_VERSION}/SMAPI-${SMAPI_VERSION}-installer.zip" -O smapi.zip
+        unzip -q smapi.zip -d smapi-extract
+        
+        # Find and copy SMAPI DLLs
+        find smapi-extract -name "StardewModdingAPI.dll" -exec cp {} "$GAME_PATH/" \;
+        find smapi-extract -name "SMAPI.Toolkit.dll" -exec cp {} "$GAME_PATH/smapi-internal/" \;
+        find smapi-extract -name "SMAPI.Toolkit.CoreInterfaces.dll" -exec cp {} "$GAME_PATH/smapi-internal/" \;
+        
+        # Create minimal game stub DLLs
+        # We need Stardew Valley and MonoGame/XNA references
+        cat > StubAssemblyInfo.cs << 'STUBEOF'
+        // Minimal stub
+        STUBEOF
+        
+        # Create StardewValley stub
+        cat > StardewValleyStub.csproj << 'EOF'
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <TargetFramework>net6.0</TargetFramework>
+            <AssemblyName>Stardew Valley</AssemblyName>
+            <RootNamespace>StardewValley</RootNamespace>
+            <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+          </PropertyGroup>
+          <ItemGroup>
+            <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.1.303" />
+          </ItemGroup>
+        </Project>
+        EOF
+        
+        mkdir -p stubs/sv
+        cat > stubs/sv/Stubs.cs << 'CSHARPEOF'
+        using System;
+        using System.Collections.Generic;
+        using Microsoft.Xna.Framework;
+        
+        namespace StardewValley
+        {
+            public class Game1
+            {
+                public static string currentSeason = "spring";
+                public static int dayOfMonth = 1;
+                public static int year = 1;
+                public static Farmer player;
+                public static IClickableMenu activeClickableMenu;
+                public static GameLocation currentLocation;
+                public static NPC getCharacterFromName(string name) => null;
+                public static Farm getFarm() => new Farm();
+            }
+        
+            public class Farmer
+            {
+                public int Money;
+                public Netcode.NetIntDelta totalMoneyEarned = new();
+                public double DailyLuck;
+                public float Stamina;
+                public float MaxStamina = 270;
+                public int health;
+                public int maxHealth = 100;
+                public int deepestMineLevel;
+                public int FarmingLevel;
+                public int FishingLevel;
+                public int ForagingLevel;
+                public int MiningLevel;
+                public int CombatLevel;
+                public int[] experiencePoints = new int[5];
+                public IList<Item> Items = new List<Item>();
+                public void addItemByMenuIfNecessary(Item item) { }
+                public int getFriendshipHeartLevelForNPC(string name) => 0;
+            }
+        
+            public class Item
+            {
+                public string DisplayName;
+            }
+        
+            public class Object : Item
+            {
+                public Object() { }
+                public Object(string id, int stack) { }
+            }
+        
+            public interface IClickableMenu { }
+        
+            public class NPC
+            {
+                public string Name;
+                public string displayName;
+                public string Birthday_Season;
+                public int Birthday_Day;
+                public bool IsVillager;
+                public GameLocation currentLocation;
+            }
+        
+            public class GameLocation
+            {
+                public string Name;
+                public Netcode.NetObjectList<NPC> characters = new();
+                public void createQuestionDialogue(string q, Response[] a, GameLocation.afterQuestionBehavior cb) { }
+                public delegate void afterQuestionBehavior(Farmer who, string key);
+            }
+        
+            public class Farm : GameLocation
+            {
+                public Netcode.NetObjectDictionary<Vector2, Object> Objects = new();
+                public Netcode.NetObjectDictionary<Vector2, TerrainFeature> terrainFeatures = new();
+                public IList<Building> buildings = new List<Building>();
+                public List<FarmAnimal> getAllFarmAnimals() => new();
+            }
+        
+            public class TerrainFeature { }
+            public class Building { }
+            public class FarmAnimal { }
+        
+            public class Response
+            {
+                public string responseKey;
+                public string responseText;
+                public Response(string key, string text) { responseKey = key; responseText = text; }
+            }
+        
+            public static class Utility
+            {
+                public static IEnumerable<NPC> getAllCharacters() => new List<NPC>();
+            }
+        
+            public static class ItemRegistry
+            {
+                public static Item Create(string id, int amount = 1) => new Object(id, amount);
+                public static ItemData GetData(string id) => null;
+            }
+        
+            public class ItemData
+            {
+                public string DisplayName;
+            }
+        }
+        
+        namespace StardewValley.Menus
+        {
+            public class DialogueBox : StardewValley.IClickableMenu
+            {
+                public DialogueBox(string text) { }
+            }
+        }
+        
+        namespace StardewValley.Tools
+        {
+            public class Tool : StardewValley.Item
+            {
+                public int UpgradeLevel;
+            }
+            public class MeleeWeapon : Tool { }
+        }
+        
+        namespace Netcode
+        {
+            public class NetIntDelta
+            {
+                public int Value;
+            }
+            public class NetObjectList<T> : List<T> { }
+            public class NetObjectDictionary<TKey, TValue> : Dictionary<TKey, TValue> { }
+        }
+        CSHARPEOF
+        
+        cp stubs/sv/Stubs.cs stubs/sv/StardewValleyStub.cs
+        cp StardewValleyStub.csproj stubs/sv/StardewValleyStub.csproj
+        
+        cd stubs/sv
+        dotnet build StardewValleyStub.csproj -c Release -o "$GAME_PATH"
+        cd ../..
+        
+        echo "Game stub files:"
+        ls -la "$GAME_PATH/"
+
+    - name: Restore
+      run: |
+        export GamePath="$GAME_PATH"
+        dotnet restore PhoneFarm/PhoneFarm.csproj
+      env:
+        GamePath: "${{ github.workspace }}/game-stub"
 
     - name: Build
-      run: dotnet build PhoneFarm/PhoneFarm.csproj --configuration Release --no-restore
+      run: |
+        export GamePath="$GAME_PATH"
+        dotnet build PhoneFarm/PhoneFarm.csproj -c Release --no-restore
+      env:
+        GamePath: "${{ github.workspace }}/game-stub"
 
-    - name: Prepare Release Files
+    - name: Package
       run: |
         mkdir -p release/PhoneFarm
-        cp PhoneFarm/bin/Release/net6.0/PhoneFarm.dll release/PhoneFarm/
+        find PhoneFarm/bin -name "PhoneFarm.dll" -exec cp {} release/PhoneFarm/ \;
         cp PhoneFarm/manifest.json release/PhoneFarm/
         cp PhoneFarm/config.json release/PhoneFarm/
+        echo "Release contents:"
+        ls -la release/PhoneFarm/
 
-    - name: Upload Artifact
+    - name: Upload
       uses: actions/upload-artifact@v4
       with:
         name: PhoneFarm-Mod
